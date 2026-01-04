@@ -11,7 +11,13 @@ require __DIR__ . '/helpers.php';
  * 1. Accept product_id (hardcoded for now)
  * -------------------------------------------------
  */
-$productId = 'recXggw5oIn4XoEaX';
+$productId = $_POST['product_id'] ?? $_GET['product_id'] ?? null;
+
+if (!$productId) {
+  http_response_code(400);
+  echo json_encode(['error' => 'product_id is required']);
+  exit();
+}
 
 /**
  * -------------------------------------------------
