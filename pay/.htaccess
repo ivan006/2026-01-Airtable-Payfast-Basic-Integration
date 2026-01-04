@@ -1,4 +1,4 @@
-# Block access to sensitive config files
-<FilesMatch "^(config\.json|config\.json\.example)$">
+# Block all JSON config files
+<FilesMatch "\.json$">
   Require all denied
 </FilesMatch>
