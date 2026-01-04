@@ -102,7 +102,17 @@ if (
 }
 
 $price = $data['fields'][$env['airtable']['price_field']];
-$productName = $data['fields'][$env['airtable']['name_field']] ?? 'Product';
+
+$productNameRaw = $data['fields'][$env['airtable']['name_field']] ?? 'Product';
+$productName = is_array($productNameRaw)
+  ? implode(', ', $productNameRaw)
+  : $productNameRaw;
+
+$productDescRaw = $data['fields'][$env['airtable']['description_field']] ?? 'Description';
+$productDesc = is_array($productDescRaw)
+  ? implode(', ', $productDescRaw)
+  : $productDescRaw;
+
 
 
 /**
@@ -115,6 +125,7 @@ $paymentPayload = [
   'merchant_key' => $env['payfast']['merchant_key'],
   'amount'       => number_format($price, 2, '.', ''),
   'item_name'    => $productName,
+  'item_description'    => $productDesc,
   'currency'     => $env['service']['currency'],
   'return_url'   => $env['service']['return_url'],
   'cancel_url'   => $env['service']['cancel_url'],
@@ -135,38 +146,45 @@ $payfastEndpoint =
     ? 'https://sandbox.payfast.co.za/eng/process'
     : 'https://www.payfast.co.za/eng/process';
 
-// // Output payload for inspection (dev only)
-// header('Content-Type: application/json; charset=utf-8');
-// echo json_encode([
-//   'status'  => 'ok',
-//   'payload' => $paymentPayload
-// ], JSON_PRETTY_PRINT);
+if ($env['payfast']['flow'] !== 'autoSubmit') {
+  
+    // Output payload for inspection (dev only)
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+    'status'  => 'ok',
+    'payload' => $paymentPayload
+    ], JSON_PRETTY_PRINT);
+    
+    exit();
+} else {
+  // HTML redirect form
+  
 
-// exit();
+    header('Content-Type: text/html; charset=utf-8');
+    ?>
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta charset="utf-8">
+    <title>Redirecting to PayFast…</title>
+    </head>
+    <body>
+    <p>Redirecting to payment…</p>
 
-header('Content-Type: text/html; charset=utf-8');
-?>
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Redirecting to PayFast…</title>
-</head>
-<body>
-  <p>Redirecting to payment…</p>
+    <form id="payfastForm" action="<?= htmlspecialchars($payfastEndpoint) ?>" method="post">
+        <?php foreach ($paymentPayload as $key => $value): ?>
+        <input type="hidden"
+                name="<?= htmlspecialchars($key) ?>"
+                value="<?= htmlspecialchars($value) ?>">
+        <?php endforeach; ?>
+    </form>
 
-  <form id="payfastForm" action="<?= htmlspecialchars($payfastEndpoint) ?>" method="post">
-    <?php foreach ($paymentPayload as $key => $value): ?>
-      <input type="hidden"
-             name="<?= htmlspecialchars($key) ?>"
-             value="<?= htmlspecialchars($value) ?>">
-    <?php endforeach; ?>
-  </form>
+    <script>
+        document.getElementById('payfastForm').submit();
+    </script>
+    </body>
+    </html>
+    <?php
+    exit();
+}
 
-  <script>
-    document.getElementById('payfastForm').submit();
-  </script>
-</body>
-</html>
-<?php
-exit();
