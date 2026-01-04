@@ -7,28 +7,17 @@ require __DIR__ . '/CurlClient.php';
 require __DIR__ . '/helpers.php';
 
 
-function generatePayFastSignature(array $data, string $passphrase = ''): string
+function generateApiSignature($pfData, $passPhrase = null)
 {
-  // Remove empty values
-  $data = array_filter($data, fn($v) => $v !== '');
+    if ($passPhrase !== null && $passPhrase !== '') {
+        $pfData['passphrase'] = $passPhrase;
+    }
 
-  // Sort alphabetically by key
-  ksort($data);
+    ksort($pfData);
 
-  // Build query string
-  $pairs = [];
-  foreach ($data as $key => $value) {
-    $pairs[] = $key . '=' . urlencode(trim($value));
-  }
+    $pfParamString = http_build_query($pfData, '', '&', PHP_QUERY_RFC1738);
 
-  $queryString = implode('&', $pairs);
-
-  // Append passphrase if set
-  if ($passphrase !== '') {
-    $queryString .= '&passphrase=' . urlencode($passphrase);
-  }
-
-  return md5($queryString);
+    return md5($pfParamString);
 }
 
 
@@ -132,19 +121,21 @@ $paymentPayload = [
   'notify_url'   => $env['service']['notify_url'],
 ];
 
-$signature = generatePayFastSignature(
+$signature = generateApiSignature(
   $paymentPayload,
   $env['payfast']['passphrase'] ?? ''
 );
 
-// $paymentPayload['signature'] = $signature;
+if ($env['payfast']['mode'] !== 'sandbox') {
+  $paymentPayload['signature'] = $signature;
+}
 
 $payfastEndpoint =
   ($env['payfast']['mode'] === 'sandbox')
     ? 'https://sandbox.payfast.co.za/eng/process'
     : 'https://www.payfast.co.za/eng/process';
 
-// Output payload for inspection (dev only)
+// // Output payload for inspection (dev only)
 // header('Content-Type: application/json; charset=utf-8');
 // echo json_encode([
 //   'status'  => 'ok',
