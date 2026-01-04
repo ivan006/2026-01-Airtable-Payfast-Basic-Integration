@@ -50,8 +50,13 @@ if (!empty($config['headers'])) {
   }
 }
 
+
 $client = new CurlClient(false);
-$info = $client->get($airtableUrl, $headers);
+
+// create temp stream for response body
+$bodyStream = fopen('php://temp', 'w+');
+
+$info = $client->get($airtableUrl, $headers, $bodyStream);
 
 if (!$info || $info['http_code'] !== 200) {
   http_response_code(502);
@@ -59,10 +64,17 @@ if (!$info || $info['http_code'] !== 200) {
   exit();
 }
 
-$responseBody = file_get_contents($info['url'] ?? '');
+// read body from stream written by cURL
+rewind($bodyStream);
+$responseBody = stream_get_contents($bodyStream);
+fclose($bodyStream);
+
 $data = json_decode($responseBody, true);
 
-if (empty($data['fields'][$env['airtable']['price_field']])) {
+if (
+  !isset($data['fields']) ||
+  !isset($data['fields'][$env['airtable']['price_field']])
+) {
   http_response_code(500);
   echo 'Price field missing in Airtable record';
   exit();
@@ -70,6 +82,7 @@ if (empty($data['fields'][$env['airtable']['price_field']])) {
 
 $price = $data['fields'][$env['airtable']['price_field']];
 $productName = $data['fields'][$env['airtable']['name_field']] ?? 'Product';
+
 
 /**
  * -------------------------------------------------
