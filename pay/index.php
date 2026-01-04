@@ -6,6 +6,32 @@ error_reporting(E_ALL);
 require __DIR__ . '/CurlClient.php';
 require __DIR__ . '/helpers.php';
 
+
+function generatePayFastSignature(array $data, string $passphrase = ''): string
+{
+  // Remove empty values
+  $data = array_filter($data, fn($v) => $v !== '');
+
+  // Sort alphabetically by key
+  ksort($data);
+
+  // Build query string
+  $pairs = [];
+  foreach ($data as $key => $value) {
+    $pairs[] = $key . '=' . urlencode(trim($value));
+  }
+
+  $queryString = implode('&', $pairs);
+
+  // Append passphrase if set
+  if ($passphrase !== '') {
+    $queryString .= '&passphrase=' . urlencode($passphrase);
+  }
+
+  return md5($queryString);
+}
+
+
 /**
  * -------------------------------------------------
  * 1. Accept product_id (hardcoded for now)
@@ -96,10 +122,22 @@ $productName = $data['fields'][$env['airtable']['name_field']] ?? 'Product';
  * -------------------------------------------------
  */
 $paymentPayload = [
-  'amount'     => number_format($price, 2, '.', ''),
-  'item_name'  => $productName,
-  'currency'   => $env['service']['currency'],
+  'merchant_id'  => $env['payfast']['merchant_id'],
+  'merchant_key' => $env['payfast']['merchant_key'],
+  'amount'       => number_format($price, 2, '.', ''),
+  'item_name'    => $productName,
+  'currency'     => $env['service']['currency'],
+  'return_url'   => $env['service']['return_url'],
+  'cancel_url'   => $env['service']['cancel_url'],
+  'notify_url'   => $env['service']['notify_url'],
 ];
+
+$signature = generatePayFastSignature(
+  $paymentPayload,
+  $env['payfast']['passphrase'] ?? ''
+);
+
+$paymentPayload['signature'] = $signature;
 
 // Output payload for inspection (dev only)
 header('Content-Type: application/json; charset=utf-8');
@@ -107,3 +145,4 @@ echo json_encode([
   'status'  => 'ok',
   'payload' => $paymentPayload
 ], JSON_PRETTY_PRINT);
+
