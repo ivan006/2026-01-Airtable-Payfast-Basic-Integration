@@ -72,6 +72,7 @@ These are **explicitly out of scope** for the current milestone.
 ```json
 {
   "airtable": {
+    "base_url": "https://api.airtable.com/v0/",
     "base_id": "appXXXXXXXXXXXX",
     "table": "Products",
     "price_field": "Price",
@@ -79,10 +80,17 @@ These are **explicitly out of scope** for the current milestone.
     "description_field": "Description"
   },
   "payfast": {
+    "flow": "autoSubmit",
     "mode": "live",
     "merchant_id": "XXXXXXX",
     "merchant_key": "XXXXXXXX",
     "passphrase": "your-passphrase-here"
+  },
+  "service": {
+    "currency": "ZAR",
+    "return_url": "https://example.com/pay/return",
+    "cancel_url": "https://example.com/pay/cancel",
+    "notify_url": "https://example.com/pay/notify"
   }
 }
 ```
