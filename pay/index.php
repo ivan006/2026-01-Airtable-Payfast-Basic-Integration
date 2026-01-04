@@ -137,12 +137,45 @@ $signature = generatePayFastSignature(
   $env['payfast']['passphrase'] ?? ''
 );
 
-$paymentPayload['signature'] = $signature;
+// $paymentPayload['signature'] = $signature;
+
+$payfastEndpoint =
+  ($env['payfast']['mode'] === 'sandbox')
+    ? 'https://sandbox.payfast.co.za/eng/process'
+    : 'https://www.payfast.co.za/eng/process';
 
 // Output payload for inspection (dev only)
-header('Content-Type: application/json; charset=utf-8');
-echo json_encode([
-  'status'  => 'ok',
-  'payload' => $paymentPayload
-], JSON_PRETTY_PRINT);
+// header('Content-Type: application/json; charset=utf-8');
+// echo json_encode([
+//   'status'  => 'ok',
+//   'payload' => $paymentPayload
+// ], JSON_PRETTY_PRINT);
 
+// exit();
+
+header('Content-Type: text/html; charset=utf-8');
+?>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Redirecting to PayFast…</title>
+</head>
+<body>
+  <p>Redirecting to payment…</p>
+
+  <form id="payfastForm" action="<?= htmlspecialchars($payfastEndpoint) ?>" method="post">
+    <?php foreach ($paymentPayload as $key => $value): ?>
+      <input type="hidden"
+             name="<?= htmlspecialchars($key) ?>"
+             value="<?= htmlspecialchars($value) ?>">
+    <?php endforeach; ?>
+  </form>
+
+  <script>
+    document.getElementById('payfastForm').submit();
+  </script>
+</body>
+</html>
+<?php
+exit();
