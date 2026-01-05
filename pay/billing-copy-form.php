@@ -153,12 +153,10 @@ $itemName = $payload['item_name'] ?? 'Product';
         $('#billingForm').on('submit', function (e) {
             e.preventDefault();
 
-            const $form = $(this);
-
             $.ajax({
                 url: 'billing-copy-create.php',
                 method: 'POST',
-                data: $form.serialize(),
+                data: $(this).serialize(),
                 dataType: 'json',
                 success: function (res) {
                     if (!res.ok) {
@@ -166,10 +164,9 @@ $itemName = $payload['item_name'] ?? 'Product';
                         return;
                     }
 
-                    // Build PayFast form dynamically
                     const $pfForm = $('<form>', {
                         method: 'POST',
-                        action: res.payfast_url
+                        action: res.payment_url
                     });
 
                     $.each(res.fields, function (key, value) {
@@ -189,6 +186,8 @@ $itemName = $payload['item_name'] ?? 'Product';
             });
         });
     </script>
+
+
 
 
 </body>

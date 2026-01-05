@@ -131,6 +131,27 @@ if (empty($response['id'])) {
  * 4. Return ONLY the billing copy ID
  * -------------------------------------------------
  */
+// Add reference BEFORE signing
+$payfastFields = [
+    'merchant_id' => $env['payfast']['merchant_id'],
+    'merchant_key' => $env['payfast']['merchant_key'],
+    'amount' => number_format((float) $_POST['amount'], 2, '.', ''),
+    'item_name' => $_POST['item_name'],
+    'currency' => $env['service']['currency'],
+    'return_url' => $env['service']['return_url'],
+    'cancel_url' => $env['service']['cancel_url'],
+    'notify_url' => $env['service']['notify_url'],
+
+    // 👇 MUST be present BEFORE signing
+    'm_payment_id' => $response['id']
+];
+
+// Generate signature LAST
+$payfastFields['signature'] = generateApiSignature(
+    $payfastFields,
+    $env['payfast']['passphrase'] ?? ''
+);
+
 $paymentUrl =
     ($env['payfast']['mode'] === 'sandbox')
     ? 'https://sandbox.payfast.co.za/eng/process'
@@ -138,7 +159,8 @@ $paymentUrl =
 
 echo json_encode([
     'ok' => true,
-    'billing_copy_id' => $response['id'],
-    'payment_url' => $paymentUrl
+    'payment_url' => $paymentUrl,
+    'fields' => $payfastFields
 ]);
+
 

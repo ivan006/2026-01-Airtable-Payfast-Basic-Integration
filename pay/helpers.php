@@ -12,3 +12,18 @@ function readConfig($url) {
 
   return isset($configs[$host]) ? $configs[$host] : null;
 }
+
+
+
+function generateApiSignature($pfData, $passPhrase = null)
+{
+    if ($passPhrase !== null && $passPhrase !== '') {
+        $pfData['passphrase'] = $passPhrase;
+    }
+
+    ksort($pfData);
+
+    $pfParamString = http_build_query($pfData, '', '&', PHP_QUERY_RFC1738);
+
+    return md5($pfParamString);
+}
