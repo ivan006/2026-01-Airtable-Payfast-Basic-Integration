@@ -132,6 +132,8 @@ if (empty($response['id'])) {
  * -------------------------------------------------
  */
 // Add reference BEFORE signing
+$billingCopyId = $response['id'];
+
 $payfastFields = [
     'merchant_id' => $env['payfast']['merchant_id'],
     'merchant_key' => $env['payfast']['merchant_key'],
@@ -141,9 +143,10 @@ $payfastFields = [
     'return_url' => $env['service']['return_url'],
     'cancel_url' => $env['service']['cancel_url'],
     'notify_url' => $env['service']['notify_url'],
+    'm_payment_id' => $billingCopyId,
 
-    // 👇 MUST be present BEFORE signing
-    'm_payment_id' => $response['id']
+    // 👇 This is the important one
+    'email_address' => $_POST['billing_email']
 ];
 
 // Generate signature LAST
