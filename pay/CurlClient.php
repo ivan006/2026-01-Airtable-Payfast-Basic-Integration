@@ -86,6 +86,8 @@ class CurlClient
     }
 
 
+
+
     /**
      * Store response headers in an array
      *
@@ -94,7 +96,8 @@ class CurlClient
      *
      * @return int header length
      */
-    protected function header($curl, $header) {
+    protected function header($curl, $header)
+    {
         $parts = preg_split('/:\s+/', $header, 2);
 
         if (isset($parts[1])) {
@@ -117,7 +120,8 @@ class CurlClient
     /**
      * Output messages to stderr
      */
-    protected function report($output = '', $suffix = "\n") {
+    protected function report($output = '', $suffix = "\n")
+    {
         file_put_contents('php://stderr', $output . $suffix);
     }
 }
