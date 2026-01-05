@@ -10,21 +10,6 @@ require __DIR__ . '/helpers.php';
 
 /**
  * -------------------------------------------------
- * Helpers
- * -------------------------------------------------
- */
-function generateApiSignature(array $pfData, ?string $passPhrase = null): string
-{
-    if ($passPhrase) {
-        $pfData['passphrase'] = $passPhrase;
-    }
-
-    ksort($pfData);
-    return md5(http_build_query($pfData, '', '&', PHP_QUERY_RFC1738));
-}
-
-/**
- * -------------------------------------------------
  * 1. Validate required billing fields
  * -------------------------------------------------
  */
@@ -35,15 +20,16 @@ $required = [
     'addr_city',
     'addr_region',
     'addr_postcode',
-    'addr_country',
-    'amount',
-    'item_name'
+    'addr_country'
 ];
 
 foreach ($required as $key) {
     if (empty($_POST[$key])) {
         http_response_code(400);
-        echo json_encode(['ok' => false, 'error' => "$key is required"]);
+        echo json_encode([
+            'ok' => false,
+            'error' => "$key is required"
+        ]);
         exit;
     }
 }
@@ -73,7 +59,7 @@ $airtableUrl =
     . '/'
     . rawurlencode($env['airtable']['paymentCopy']['table']);
 
-// 🔐 Host-scoped auth (MANDATORY)
+// 🔐 REQUIRED: host-scoped auth
 $config = readConfig($airtableUrl);
 $headers = [];
 
@@ -84,7 +70,7 @@ if (!empty($config['headers'])) {
 }
 $headers[] = 'Content-Type: application/json';
 
-// Map billing fields → Airtable
+// Map form → Airtable fields
 $fields = [
     'Billing Name' => $_POST['billing_name'],
     'Billing Email' => $_POST['billing_email'],
@@ -97,12 +83,14 @@ $fields = [
     'Postcode' => $_POST['addr_postcode'],
     'Country' => $_POST['addr_country'],
 
+    // Snapshot (safe)
     'Amount' => $_POST['amount'],
     'Currency' => $env['service']['currency'],
     'Product' => $_POST['item_name'],
 
     $env['airtable']['paymentCopy']['status_field'] => 'Pending'
 ];
+
 
 $payload = json_encode(['fields' => $fields]);
 
@@ -126,49 +114,24 @@ if (!$info || !in_array($info['http_code'], [200, 201])) {
 }
 
 rewind($bodyStream);
-$airtableResponse = json_decode(stream_get_contents($bodyStream), true);
+$response = json_decode(stream_get_contents($bodyStream), true);
 fclose($bodyStream);
 
-$billingRecordId = $airtableResponse['id'] ?? null;
-
-/**
- * -------------------------------------------------
- * 4. Build PayFast payload
- * -------------------------------------------------
- */
-$payfastFields = [
-    'merchant_id' => $env['payfast']['merchant_id'],
-    'merchant_key' => $env['payfast']['merchant_key'],
-    'amount' => number_format($_POST['amount'], 2, '.', ''),
-    'item_name' => $_POST['item_name'],
-    'currency' => $env['service']['currency'],
-    'return_url' => $env['service']['return_url'],
-    'cancel_url' => $env['service']['cancel_url'],
-    'notify_url' => $env['service']['notify_url'],
-];
-
-// Optional reference linkage
-if ($billingRecordId) {
-    $payfastFields['m_payment_id'] = $billingRecordId;
+if (empty($response['id'])) {
+    http_response_code(500);
+    echo json_encode([
+        'ok' => false,
+        'error' => 'Billing copy ID missing from Airtable response'
+    ]);
+    exit;
 }
 
-$payfastFields['signature'] = generateApiSignature(
-    $payfastFields,
-    $env['payfast']['passphrase'] ?? ''
-);
-
-$payfastUrl =
-    ($env['payfast']['mode'] === 'sandbox')
-    ? 'https://sandbox.payfast.co.za/eng/process'
-    : 'https://www.payfast.co.za/eng/process';
-
 /**
  * -------------------------------------------------
- * 5. Return JSON (client will submit to PayFast)
+ * 4. Return ONLY the billing copy ID
  * -------------------------------------------------
  */
 echo json_encode([
     'ok' => true,
-    'payfast_url' => $payfastUrl,
-    'fields' => $payfastFields
+    'billing_copy_id' => $response['id']
 ], JSON_PRETTY_PRINT);

@@ -14,6 +14,8 @@ $itemName = $payload['item_name'] ?? 'Product';
 
     <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
 </head>
 
 <body class="bg-light">
@@ -61,7 +63,7 @@ $itemName = $payload['item_name'] ?? 'Product';
 
                             <h5 class="fw-semibold mb-3">Enter billing details</h5>
 
-                            <form method="post" action="billing-copy-create.php">
+                            <form id="billingForm">
 
                                 <h6 class="fw-semibold mt-4 mb-3">Contact information</h6>
                                 <div class="mb-3">
@@ -71,12 +73,14 @@ $itemName = $payload['item_name'] ?? 'Product';
 
                                 <div class="mb-3">
                                     <!-- <label class="form-label">Email</label> -->
-                                    <input class="form-control" type="email" name="billing_email" placeholder="Email" required>
+                                    <input class="form-control" type="email" name="billing_email" placeholder="Email"
+                                        required>
                                 </div>
 
                                 <div class="mb-3">
                                     <!-- <label class="form-label">Phone number (optional)</label> -->
-                                    <input class="form-control" name="billing_phone" placeholder="Phone number (optional)">
+                                    <input class="form-control" name="billing_phone"
+                                        placeholder="Phone number (optional)">
                                 </div>
 
                                 <h6 class="fw-semibold mt-4 mb-3">Billing address</h6>
@@ -145,6 +149,47 @@ $itemName = $payload['item_name'] ?? 'Product';
 
         </div>
     </div>
+    <script>
+        $('#billingForm').on('submit', function (e) {
+            e.preventDefault();
+
+            const $form = $(this);
+
+            $.ajax({
+                url: 'billing-copy-create.php',
+                method: 'POST',
+                data: $form.serialize(),
+                dataType: 'json',
+                success: function (res) {
+                    if (!res.ok) {
+                        alert(res.error || 'Payment setup failed');
+                        return;
+                    }
+
+                    // Build PayFast form dynamically
+                    const $pfForm = $('<form>', {
+                        method: 'POST',
+                        action: res.payfast_url
+                    });
+
+                    $.each(res.fields, function (key, value) {
+                        $('<input>', {
+                            type: 'hidden',
+                            name: key,
+                            value: value
+                        }).appendTo($pfForm);
+                    });
+
+                    $('body').append($pfForm);
+                    $pfForm.submit();
+                },
+                error: function () {
+                    alert('Network error creating billing copy');
+                }
+            });
+        });
+    </script>
+
 
 </body>
 
