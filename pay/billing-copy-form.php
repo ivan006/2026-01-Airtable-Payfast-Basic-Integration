@@ -131,9 +131,10 @@ $itemName = $payload['item_name'] ?? 'Product';
                                         value="<?= htmlspecialchars($value) ?>">
                                 <?php endforeach; ?>
 
-                                <button class="btn btn-dark w-100 fw-semibold mt-2">
-                                    Continue to payment
+                                <button type="submit" class="btn btn-dark w-100 fw-semibold mt-2">
+                                    <span class="btn-label">Continue to payment</span>
                                 </button>
+
 
                                 <div class="small text-muted text-center mt-3">
                                     You will be redirected to PayFast to complete payment
@@ -153,13 +154,26 @@ $itemName = $payload['item_name'] ?? 'Product';
         $('#billingForm').on('submit', function (e) {
             e.preventDefault();
 
+            const $form = $(this);
+            const $btn = $form.find('button[type="submit"]');
+            const $label = $btn.find('.btn-label');
+
+            // Loading state
+            $btn.prop('disabled', true);
+            const originalText = $label.text();
+            $label.html(`
+    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+    Processing…
+  `);
+
             $.ajax({
                 url: 'billing-copy-create.php',
                 method: 'POST',
-                data: $(this).serialize(),
+                data: $form.serialize(),
                 dataType: 'json',
                 success: function (res) {
                     if (!res.ok) {
+                        restore();
                         alert(res.error || 'Payment setup failed');
                         return;
                     }
@@ -181,11 +195,18 @@ $itemName = $payload['item_name'] ?? 'Product';
                     $pfForm.submit();
                 },
                 error: function () {
+                    restore();
                     alert('Network error creating billing copy');
                 }
             });
+
+            function restore() {
+                $btn.prop('disabled', false);
+                $label.text(originalText);
+            }
         });
     </script>
+
 
 
 
