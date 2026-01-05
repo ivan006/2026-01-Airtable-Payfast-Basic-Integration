@@ -1,142 +1,259 @@
 
-# Payment Integration Service (PayFast)
+# Payment Integration Service (PayFast + Airtable)
 
-## Overview
+A lightweight, deploy-anywhere **payment integration service** designed to:
 
-This service is a **minimal, server-side PayFast payment integration** designed to:
+* Resolve **authoritative pricing** from Airtable
+* Create optional **billing copies / orders** for invoicing and compliance
+* Hand off payments securely to **PayFast**
+* Keep PayFast as the **source of truth** for transactions
 
-* Resolve **authoritative product pricing** from Airtable
-* Generate **PayFast-compliant signatures**
-* Redirect users to PayFast using the **official auto-submit form flow**
-* Keep all secrets **server-side**
-* Avoid premature complexity (orders, carts, webhooks)
-
-It is intentionally **not** a full e-commerce system.
+This service is intentionally minimal, transparent, and framework-free.
 
 ---
 
-## Core Principles
+## Goals & Philosophy
 
-* **Authoritative pricing**
-  Prices are resolved server-side from Airtable. The client never supplies amounts.
+* **PayFast is the payment authority**
+* This service **augments**, not replaces, PayFast records
+* Orders / billing copies are **administrative artifacts**, not payment truth
+* Automation (webhooks, status sync) is optional and deferred until needed
 
-* **Server-signed payments**
-  All PayFast payloads are signed using the merchant passphrase.
-
-* **Browser-based handoff**
-  Payments are initiated via an auto-submitting HTML form (PayFast-recommended flow).
-
-* **Minimal surface area**
-  No SDKs, no client secrets, no duplicate order sources (yet).
+> Think of this service as a *payment coordinator*, not a full e-commerce engine.
 
 ---
 
-## Current Capabilities
+## Tech Stack
 
-* ✅ Airtable record lookup by `product_id`
-* ✅ Price and product name resolution
-* ✅ PayFast payload assembly
-* ✅ Live & sandbox endpoint switching
-* ✅ Correct RFC1738 signature generation
-* ✅ Auto-redirect to PayFast checkout
+* **PHP** (plain PHP, no framework)
+* **Airtable API** (authoritative product pricing, order storage)
+* **PayFast** (payments)
+* **Bootstrap 5 (CDN)** for UI
+* **cURL** for outbound API calls
 
----
+Designed to run in **any webroot or subdirectory**:
 
-## What This Service Does *Not* Do (Yet)
-
-* ❌ Order creation or persistence
-* ❌ Customer or billing data storage
-* ❌ IPN (Instant Payment Notification) handling
-* ❌ Invoice generation
-* ❌ Refunds or reconciliation automation
-
-These are **explicitly out of scope** for the current milestone.
+```
+example.com/pay/
+example.com/services/pay/
+```
 
 ---
 
-## Flow (High Level)
+## Repository Structure
 
-1. Request received (product ID)
-2. Environment + secrets loaded
-3. Airtable queried for authoritative product data
-4. PayFast payload assembled
-5. Signature generated server-side
-6. Browser auto-redirected to PayFast
+```
+/pay
+├── index.php                     # Price resolution + flow router
+├── billing-copy-form.php          # Stripe-style billing form (UI)
+├── billing-copy-create.php        # Creates billing copy + returns PayFast payload (AJAX)
+├── billing-copy-pull-update.php   # (Planned) Pull status from PayFast
+├── CurlClient.php                 # cURL wrapper
+├── helpers.php                    # Config helpers
+├── config.json.example            # API config example (committed)
+├── env.json.example               # Environment config example (committed)
+├── .htaccess                      # Blocks access to sensitive files
+```
+
+> `config.json` and `env.json` are **not committed**.
 
 ---
 
-## Configuration
+## Configuration Files
 
-### `env.json` (not committed)
+### `config.json` (not committed)
+
+Used for host-based API auth (e.g. Airtable).
 
 ```json
 {
-  "airtable": {
-    "base_url": "https://api.airtable.com/v0/",
-    "base_id": "appXXXXXXXXXXXX",
-    "table": "Products",
-    "price_field": "Price",
-    "name_field": "Name",
-    "description_field": "Description"
-  },
-  "payfast": {
-    "flow": "autoSubmit",
-    "mode": "live",
-    "merchant_id": "XXXXXXX",
-    "merchant_key": "XXXXXXXX",
-    "passphrase": "your-passphrase-here"
-  },
-  "service": {
-    "currency": "ZAR",
-    "return_url": "https://example.com/pay/return",
-    "cancel_url": "https://example.com/pay/cancel",
-    "notify_url": "https://example.com/pay/notify"
+  "api.airtable.com": {
+    "headers": {
+      "Authorization": "Bearer YOUR_AIRTABLE_TOKEN"
+    }
   }
 }
 ```
 
-### `config.json` (not committed)
+### `env.json` (not committed)
 
-Used for host-based auth headers (e.g. Airtable API tokens).
+Controls environment-specific behavior.
+
+```json
+{
+  "airtable": {
+    "base_id": "appXXXXXXXX",
+    "table": "Products",
+    "price_field": "Price",
+    "name_field": "Name"
+  },
+  "payfast": {
+    "merchant_id": "XXXX",
+    "merchant_key": "XXXX",
+    "passphrase": "OPTIONAL",
+    "mode": "live"
+  },
+  "flow": "billing"
+}
+```
 
 ---
 
-## Security Notes
+## Security
 
-* `env.json` and `config.json` **must not be publicly accessible**
-* `.htaccess` blocks access to sensitive JSON files
-* Merchant credentials and passphrase **never leave the server**
-* Anyone cloning this repo must supply **their own credentials**
+* Sensitive files (`config.json`, examples) are blocked via `.htaccess`
+* **PayFast passphrase** protects payload integrity
+* Pricing is **never accepted from the client**
+* Airtable is the **authoritative price source**
 
 ---
 
-## Why Auto-Submit Form?
+## Core Concepts
 
-PayFast does **not** support server-to-server payment creation.
+### Authoritative Pricing
 
-The browser POST flow is:
+* Price is fetched server-side from Airtable
+* Client never supplies amount
+* Prevents price tampering
 
-* Required
+### Orders / Billing Copies
+
+* Optional
+* Created **before redirecting to PayFast**
+* Used for:
+
+  * invoices
+  * B2B compliance
+  * customer references
+
+### Payment Authority
+
+* PayFast is the **only** source of truth for payment status
+* Local order status (if used) is a **cache**, not authority
+
+---
+
+## Flows
+
+The service supports **three flows**, controlled in `env.json`.
+
+### 1. `debug`
+
+* Returns JSON only
+* No redirects
+* Used for development / inspection
+
+```json
+{
+  "status": "ok",
+  "payload": { ... }
+}
+```
+
+---
+
+### 2. `no_billing`
+
+* Fastest path
+* No local order creation
+* Autosubmits directly to PayFast
+
+**Flow:**
+
+1. Resolve price
+2. Generate PayFast payload + signature
+3. Redirect to PayFast
+
+Use when:
+
+* No invoice required
+* Minimal friction checkout
+
+---
+
+### 3. `billing` (primary flow)
+
+Stripe-style UX with billing copy.
+
+**Flow:**
+
+1. Resolve price (`index.php`)
+2. Show billing form (`billing-copy-form.php`)
+3. AJAX → create billing copy (`billing-copy-create.php`)
+4. Receive PayFast payload
+5. Auto-submit to PayFast
+
+Billing info is stored **before** payment starts.
+
+---
+
+## UI
+
+* Stripe-inspired two-column layout
+* Left: product summary
+* Right: billing details
+* No card details collected locally
+* Fully Bootstrap-based (utilities + inline styles only)
+
+---
+
+## What’s Implemented ✅
+
+* Airtable price resolution
+* PayFast payload + signature generation
+* Multiple flow routing
+* Stripe-style billing UI
+* Secure config handling
+* Autosubmit to PayFast
+* AJAX-based billing copy creation (designed)
+
+---
+
+## What’s Pending ⏳
+
+* `billing-copy-create.php` implementation (AJAX endpoint)
+* Optional `billing-copy-pull-update.php`
+
+  * Manual “refresh status”
+  * Or webhook-triggered pull
+* Optional webhook (ITN) integration
+* Optional invoice PDF generation
+* Optional accounting export (Xero, etc.)
+
+---
+
+## Compliance Notes
+
+* **Invoices:** Supported via billing copies
+* **Payment records:** PayFast dashboard is authoritative
+* **Order status:** Optional, cached, non-authoritative
+* **B2B readiness:** Billing fields support legal requirements
+
+Webhook integration is **not required for compliance**, only for automation.
+
+---
+
+## Design Intent (Important)
+
+This service intentionally avoids:
+
+* Complex state machines
+* Duplicating PayFast logic
+* Premature automation
+
+Everything can be **added later without breaking the architecture**.
+
+---
+
+## Summary
+
+This payment service is:
+
 * Secure
-* Officially supported
-* Compatible with 3-D Secure and redirects
+* Minimal
+* Transparent
+* Deployable anywhere
+* Easy to reason about
+* Easy to extend
 
----
-
-## Intended Next Milestones (Not Implemented)
-
-* Minimal order creation (for physical goods & invoicing)
-* IPN validation
-* Accounting / invoice integration
-* Optional billing info collection
-
-These will be added **incrementally**, not all at once.
-
----
-
-## Philosophy
-
-> This service is a **payment rail**, not a storefront, CRM, or accounting system.
-
-It does one thing well:
-**move a user from price → payment correctly and safely.**
+It solves **today’s needs** without locking you into tomorrow’s complexity.
