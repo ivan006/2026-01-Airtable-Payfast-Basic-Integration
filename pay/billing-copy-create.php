@@ -84,7 +84,7 @@ $fields = [
     'Country' => $_POST['addr_country'],
 
     // Snapshot (safe)
-    'Amount' => $_POST['amount'],
+    'Amount' => round((float) $_POST['amount'], 2),
     'Currency' => $env['service']['currency'],
     'Product' => $_POST['item_name'],
 
@@ -131,7 +131,14 @@ if (empty($response['id'])) {
  * 4. Return ONLY the billing copy ID
  * -------------------------------------------------
  */
+$paymentUrl =
+    ($env['payfast']['mode'] === 'sandbox')
+    ? 'https://sandbox.payfast.co.za/eng/process'
+    : 'https://www.payfast.co.za/eng/process';
+
 echo json_encode([
     'ok' => true,
-    'billing_copy_id' => $response['id']
-], JSON_PRETTY_PRINT);
+    'billing_copy_id' => $response['id'],
+    'payment_url' => $paymentUrl
+]);
+
