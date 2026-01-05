@@ -55,9 +55,41 @@ $itemName = $payload['item_name'] ?? 'Product';
                                 <input class="form-control" name="billing_phone">
                             </div>
 
+
+
+                            <!-- Address -->
                             <div class="mb-3">
-                                <label class="form-label">Billing address</label>
-                                <textarea class="form-control" name="billing_address" rows="3"></textarea>
+                                <label class="form-label">Street address</label>
+                                <input class="form-control" name="addr_street" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Apartment / Unit (optional)</label>
+                                <input class="form-control" name="addr_unit">
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">City / Town</label>
+                                    <input class="form-control" name="addr_city" required>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Province / Region</label>
+                                    <input class="form-control" name="addr_region" required>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Postal / ZIP Code</label>
+                                    <input class="form-control" name="addr_postcode" required>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Country</label>
+                                    <input class="form-control" name="addr_country" required>
+                                </div>
                             </div>
 
                             <div class="mb-3">
