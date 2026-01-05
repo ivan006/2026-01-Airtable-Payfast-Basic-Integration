@@ -146,20 +146,29 @@ $payfastEndpoint =
     ? 'https://sandbox.payfast.co.za/eng/process'
     : 'https://www.payfast.co.za/eng/process';
 
-if ($env['payfast']['flow'] !== 'autoSubmit') {
-  
-    // Output payload for inspection (dev only)
+
+$flow = $env['flow'] ?? 'debug';
+
+switch ($flow) {
+
+  /**
+   * 1. DEBUG
+   * Return payload as JSON (no redirect)
+   */
+  case 'debug':
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode([
     'status'  => 'ok',
     'payload' => $paymentPayload
     ], JSON_PRETTY_PRINT);
-    
     exit();
-} else {
-  // HTML redirect form
-  
 
+
+  /**
+   * 2. NO BILLING
+   * Direct autosubmit to PayFast
+   */
+  case 'no_billing':
     header('Content-Type: text/html; charset=utf-8');
     ?>
     <!DOCTYPE html>
@@ -186,5 +195,47 @@ if ($env['payfast']['flow'] !== 'autoSubmit') {
     </html>
     <?php
     exit();
+
+
+  /**
+   * 3. BILLING
+   * Redirect to billing-copy-form.php
+   * Hand over payload (not yet sent to PayFast)
+   */
+  case 'billing':
+    header('Content-Type: text/html; charset=utf-8');
+    ?>
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Billing details</title>
+    </head>
+    <body>
+      <form id="billingForm"
+            action="billing-copy-form.php"
+            method="post">
+        <?php foreach ($paymentPayload as $key => $value): ?>
+          <input type="hidden"
+                 name="<?= htmlspecialchars($key) ?>"
+                 value="<?= htmlspecialchars($value) ?>">
+        <?php endforeach; ?>
+      </form>
+
+      <script>
+        document.getElementById('billingForm').submit();
+      </script>
+    </body>
+    </html>
+    <?php
+    exit();
+
+
+  default:
+    http_response_code(400);
+    echo 'Invalid flow';
+    exit();
 }
+
+
 
