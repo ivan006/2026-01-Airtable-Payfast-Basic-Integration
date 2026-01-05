@@ -1,79 +1,92 @@
 <?php
-$amount   = $_GET['amount']   ?? '0.00';
-$currency = $_GET['currency'] ?? 'ZAR';
+// Receive payload from index.php
+$payload = $_POST ?? [];
+
+// Safe defaults
+$amount = $payload['amount'] ?? '0.00';
+$currency = $payload['currency'] ?? 'ZAR';
+$itemName = $payload['item_name'] ?? 'Product';
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="utf-8">
-  <title>Billing details</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8">
+    <title>Billing Details</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
+
 <body class="bg-light">
 
-  <div class="container py-5">
-    <div class="row justify-content-center">
-      <div class="col-12 col-md-6 col-lg-5">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-6 col-lg-5">
 
-        <div class="card shadow-sm border-0 rounded-3">
-          <div class="card-body p-4">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4">
 
-            <h5 class="fw-semibold mb-1">Billing details</h5>
-            <div class="text-primary fw-semibold mb-4">
-              <?= htmlspecialchars($currency) ?> <?= htmlspecialchars($amount) ?>
+                        <h5 class="fw-semibold mb-1">Billing details</h5>
+                        <div class="text-muted mb-3">
+                            <?= htmlspecialchars($itemName) ?>
+                        </div>
+
+                        <div class="fw-bold text-primary mb-4">
+                            <?= htmlspecialchars($currency) ?> <?= htmlspecialchars($amount) ?>
+                        </div>
+
+                        <form method="post" action="billing-copy-create.php">
+
+                            <!-- Billing fields -->
+                            <div class="mb-3">
+                                <label class="form-label">Full name</label>
+                                <input class="form-control" name="billing_name" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Email address</label>
+                                <input class="form-control" type="email" name="billing_email" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Phone number (optional)</label>
+                                <input class="form-control" name="billing_phone">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Billing address</label>
+                                <textarea class="form-control" name="billing_address" rows="3"></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">VAT / Company number (optional)</label>
+                                <input class="form-control" name="billing_vat">
+                            </div>
+
+                            <!-- Carry full payment payload forward -->
+                            <?php foreach ($payload as $key => $value): ?>
+                                <input type="hidden" name="<?= htmlspecialchars($key) ?>"
+                                    value="<?= htmlspecialchars($value) ?>">
+                            <?php endforeach; ?>
+
+                            <button type="submit" class="btn btn-primary w-100 fw-semibold">
+                                Continue to payment
+                            </button>
+                        </form>
+
+                        <div class="text-center small text-muted mt-3">
+                            You’ll be redirected to PayFast to complete payment
+                        </div>
+
+                    </div>
+                </div>
+
             </div>
-
-            <form method="post" action="billing-copy-create.php">
-
-              <div class="mb-3">
-                <label class="form-label small">Full name</label>
-                <input class="form-control" name="name" required>
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label small">Email address</label>
-                <input type="email" class="form-control" name="email" required>
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label small">Phone number (optional)</label>
-                <input class="form-control" name="phone">
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label small">Billing address</label>
-                <textarea class="form-control" name="address" rows="3"></textarea>
-              </div>
-
-              <div class="mb-4">
-                <label class="form-label small">VAT / Company number (optional)</label>
-                <input class="form-control" name="vat">
-              </div>
-
-              <!-- carry pricing forward -->
-              <input type="hidden" name="amount" value="<?= htmlspecialchars($amount) ?>">
-              <input type="hidden" name="currency" value="<?= htmlspecialchars($currency) ?>">
-
-              <button
-                type="submit"
-                class="btn btn-primary w-100 fw-semibold"
-                style="background-color:#6772e5;border-color:#6772e5"
-              >
-                Continue to payment
-              </button>
-
-            </form>
-
-            <div class="text-center text-muted small mt-3">
-              You’ll be redirected to PayFast to complete payment
-            </div>
-
-          </div>
         </div>
-
-      </div>
     </div>
-  </div>
 
 </body>
+
 </html>
