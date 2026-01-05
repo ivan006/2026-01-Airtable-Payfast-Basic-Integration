@@ -26,7 +26,7 @@ $itemName = $payload['item_name'] ?? 'Product';
                     <div class="row g-0">
 
                         <!-- LEFT: Product summary -->
-                        <div class="col-md-5 bg-primary text-white p-4 d-flex flex-column justify-content-between"
+                        <div class="col-md-5 bg-dark text-white p-4 d-flex flex-column justify-content-between"
                             style="min-height: 420px;">
 
                             <div>
@@ -48,72 +48,78 @@ $itemName = $payload['item_name'] ?? 'Product';
                             </div>
 
                             <!-- Placeholder visual (optional) -->
-                            <div class="mt-4 text-center opacity-75">
+                            <!-- <div class="mt-4 text-center opacity-75">
                                 <div class="border border-light rounded p-3">
                                     Product summary
                                 </div>
-                            </div>
+                            </div> -->
 
                         </div>
 
                         <!-- RIGHT: Billing form -->
                         <div class="col-md-7 p-4 bg-white">
 
-                            <h5 class="fw-semibold mb-3">Billing details</h5>
+                            <h5 class="fw-semibold mb-3">Enter billing details</h5>
 
                             <form method="post" action="billing-copy-create.php">
 
+                                <h6 class="fw-semibold mt-4 mb-3">Contact information</h6>
                                 <div class="mb-3">
-                                    <label class="form-label">Full name</label>
-                                    <input class="form-control" name="billing_name" required>
+                                    <!-- <label class="form-label">Full name</label> -->
+                                    <input class="form-control" name="billing_name" placeholder="Full name" required>
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label">Email</label>
-                                    <input class="form-control" type="email" name="billing_email" required>
+                                    <!-- <label class="form-label">Email</label> -->
+                                    <input class="form-control" type="email" name="billing_email" placeholder="Email" required>
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label">Phone number (optional)</label>
-                                    <input class="form-control" name="billing_phone">
+                                    <!-- <label class="form-label">Phone number (optional)</label> -->
+                                    <input class="form-control" name="billing_phone" placeholder="Phone number (optional)">
+                                </div>
+
+                                <h6 class="fw-semibold mt-4 mb-3">Billing address</h6>
+                                <div class="mb-3">
+                                    <!-- <label class="form-label">Street address</label> -->
+                                    <input class="form-control" name="addr_street" placeholder="Street address"
+                                        required>
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label">Street address</label>
-                                    <input class="form-control" name="addr_street" required>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Apartment / Unit (optional)</label>
-                                    <input class="form-control" name="addr_unit">
+                                    <!-- <label class="form-label">Apartment / Unit (optional)</label> -->
+                                    <input class="form-control" name="addr_unit"
+                                        placeholder="Apartment / Unit (optional)">
                                 </div>
 
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label">City / Town</label>
-                                        <input class="form-control" name="addr_city" required>
+                                        <!-- <label class="form-label">City / Town</label> -->
+                                        <input class="form-control" name="addr_city" placeholder="City / Town" required>
                                     </div>
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label">Province / Region</label>
-                                        <input class="form-control" name="addr_region" required>
+                                        <!-- <label class="form-label">Province / Region</label> -->
+                                        <input class="form-control" name="addr_region" placeholder="Province / Region"
+                                            required>
                                     </div>
                                 </div>
 
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label">Postal / ZIP</label>
-                                        <input class="form-control" name="addr_postcode" required>
+                                        <!-- <label class="form-label">Postal / ZIP</label> -->
+                                        <input class="form-control" name="addr_postcode" placeholder="Postal / ZIP"
+                                            required>
                                     </div>
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label">Country</label>
-                                        <input class="form-control" name="addr_country" required>
+                                        <!-- <label class="form-label">Country</label> -->
+                                        <input class="form-control" name="addr_country" placeholder="Country" required>
                                     </div>
                                 </div>
 
-                                <div class="mb-3">
+                                <!-- <div class="mb-3">
                                     <label class="form-label">VAT / Company number (optional)</label>
-                                    <input class="form-control" name="billing_vat">
-                                </div>
+                                    <input class="form-control" name="billing_vat" placeholder="">
+                                </div> -->
 
                                 <!-- Forward full payment payload -->
                                 <?php foreach ($payload as $key => $value): ?>
@@ -121,7 +127,7 @@ $itemName = $payload['item_name'] ?? 'Product';
                                         value="<?= htmlspecialchars($value) ?>">
                                 <?php endforeach; ?>
 
-                                <button class="btn btn-primary w-100 fw-semibold mt-2">
+                                <button class="btn btn-dark w-100 fw-semibold mt-2">
                                     Continue to payment
                                 </button>
 
