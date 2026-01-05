@@ -7,18 +7,6 @@ require __DIR__ . '/CurlClient.php';
 require __DIR__ . '/helpers.php';
 
 
-function generateApiSignature($pfData, $passPhrase = null)
-{
-    if ($passPhrase !== null && $passPhrase !== '') {
-        $pfData['passphrase'] = $passPhrase;
-    }
-
-    ksort($pfData);
-
-    $pfParamString = http_build_query($pfData, '', '&', PHP_QUERY_RFC1738);
-
-    return md5($pfParamString);
-}
 
 
 /**
@@ -156,6 +144,15 @@ switch ($flow) {
      * Return payload as JSON (no redirect)
      */
     case 'debug':
+
+        $signature = generateApiSignature(
+            $paymentPayload,
+            $env['payfast']['passphrase'] ?? ''
+        );
+
+        if ($env['payfast']['mode'] !== 'sandbox') {
+            $paymentPayload['signature'] = $signature;
+        }
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode([
             'status' => 'ok',
@@ -169,6 +166,15 @@ switch ($flow) {
      * Direct autosubmit to PayFast
      */
     case 'no_billing':
+
+        $signature = generateApiSignature(
+            $paymentPayload,
+            $env['payfast']['passphrase'] ?? ''
+        );
+
+        if ($env['payfast']['mode'] !== 'sandbox') {
+            $paymentPayload['signature'] = $signature;
+        }
         header('Content-Type: text/html; charset=utf-8');
         ?>
         <!DOCTYPE html>
