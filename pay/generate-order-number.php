@@ -8,6 +8,14 @@ header('Content-Type: application/json; charset=utf-8');
 require __DIR__ . '/CurlClient.php';
 require __DIR__ . '/helpers.php';
 
+$input = json_decode(file_get_contents('php://input'), true);
+
+if (!is_array($input)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Invalid JSON body']);
+    exit;
+}
+
 /**
  * -------------------------------------------------
  * 1. Validate required delivery fields
@@ -23,8 +31,12 @@ $required = [
     'addr_country'
 ];
 
+
 foreach ($required as $key) {
-    if (empty($_POST[$key])) {
+    if (
+        !array_key_exists($key, $input) ||
+        trim((string)$input[$key]) === ''
+    ) {
         http_response_code(400);
         echo json_encode([
             'ok' => false,
@@ -33,7 +45,6 @@ foreach ($required as $key) {
         exit;
     }
 }
-
 /**
  * -------------------------------------------------
  * 2. Load env.json
@@ -74,20 +85,20 @@ if (!empty($config['headers'])) {
 $headers[] = 'Content-Type: application/json';
 
 // Delivery-only fields (NO product economics)
-$fields = [
-    'Delivery Name' => $_POST['delivery_name'],
-    'Delivery Email' => $_POST['delivery_email'],
-    'Delivery Phone' => $_POST['delivery_phone'] ?? '',
 
-    'Street' => $_POST['addr_street'],
-    'Unit' => $_POST['addr_unit'] ?? '',
-    'City' => $_POST['addr_city'],
-    'Region' => $_POST['addr_region'],
-    'Postcode' => $_POST['addr_postcode'],
-    'Country' => $_POST['addr_country'],
+$fields = [];
 
-    $env['airtable']['paymentCopy']['status_field'] => 'Pending'
-];
+$mapping = $env['airtable']['paymentCopy']['fields'] ?? [];
+
+foreach ($mapping as $inputKey => $airtableField) {
+    if (array_key_exists($inputKey, $input) && $input[$inputKey] !== '') {
+        $fields[$airtableField] = $input[$inputKey];
+    }
+}
+
+// System fields
+$fields[$env['airtable']['paymentCopy']['status_field']] = 'Pending';
+
 
 $payload = json_encode(['fields' => $fields]);
 
