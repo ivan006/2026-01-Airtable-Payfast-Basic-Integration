@@ -10,12 +10,12 @@ require __DIR__ . '/helpers.php';
 
 /**
  * -------------------------------------------------
- * 1. Validate required billing fields
+ * 1. Validate required delivery fields
  * -------------------------------------------------
  */
 $required = [
-    'billing_name',
-    'billing_email',
+    'delivery_name',
+    'delivery_email',
     'addr_street',
     'addr_city',
     'addr_region',
@@ -42,7 +42,10 @@ foreach ($required as $key) {
 $envFile = __DIR__ . '/env.json';
 if (!file_exists($envFile)) {
     http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => 'env.json missing']);
+    echo json_encode([
+        'ok' => false,
+        'error' => 'env.json missing'
+    ]);
     exit;
 }
 
@@ -50,7 +53,7 @@ $env = json_decode(file_get_contents($envFile), true);
 
 /**
  * -------------------------------------------------
- * 3. Create billing copy in Airtable
+ * 3. Create order shell in Airtable
  * -------------------------------------------------
  */
 $airtableUrl =
@@ -59,7 +62,7 @@ $airtableUrl =
     . '/'
     . rawurlencode($env['airtable']['paymentCopy']['table']);
 
-// 🔐 REQUIRED: host-scoped auth
+// Host-scoped auth
 $config = readConfig($airtableUrl);
 $headers = [];
 
@@ -70,11 +73,11 @@ if (!empty($config['headers'])) {
 }
 $headers[] = 'Content-Type: application/json';
 
-// Map form → Airtable fields
+// Delivery-only fields (NO product economics)
 $fields = [
-    'Billing Name' => $_POST['billing_name'],
-    'Billing Email' => $_POST['billing_email'],
-    'Billing Phone' => $_POST['billing_phone'] ?? '',
+    'Delivery Name' => $_POST['delivery_name'],
+    'Delivery Email' => $_POST['delivery_email'],
+    'Delivery Phone' => $_POST['delivery_phone'] ?? '',
 
     'Street' => $_POST['addr_street'],
     'Unit' => $_POST['addr_unit'] ?? '',
@@ -83,14 +86,8 @@ $fields = [
     'Postcode' => $_POST['addr_postcode'],
     'Country' => $_POST['addr_country'],
 
-    // Snapshot (safe)
-    'Amount' => round((float) $_POST['amount'], 2),
-    'Currency' => $env['service']['currency'],
-    'Product' => $_POST['item_name'],
-
     $env['airtable']['paymentCopy']['status_field'] => 'Pending'
 ];
-
 
 $payload = json_encode(['fields' => $fields]);
 
@@ -99,7 +96,7 @@ $bodyStream = fopen('php://temp', 'w+');
 
 $info = $client->post($airtableUrl, $headers, $payload, $bodyStream);
 
-if (!$info || !in_array($info['http_code'], [200, 201])) {
+if (!$info || !in_array($info['http_code'], [200, 201], true)) {
     rewind($bodyStream);
     $err = stream_get_contents($bodyStream);
     fclose($bodyStream);
@@ -107,7 +104,7 @@ if (!$info || !in_array($info['http_code'], [200, 201])) {
     http_response_code(502);
     echo json_encode([
         'ok' => false,
-        'error' => 'Failed to create billing copy',
+        'error' => 'Failed to create order',
         'details' => $err
     ]);
     exit;
@@ -121,49 +118,17 @@ if (empty($response['id'])) {
     http_response_code(500);
     echo json_encode([
         'ok' => false,
-        'error' => 'Billing copy ID missing from Airtable response'
+        'error' => 'Order ID missing from Airtable response'
     ]);
     exit;
 }
 
 /**
  * -------------------------------------------------
- * 4. Return ONLY the billing copy ID
+ * 4. Return order ID only
  * -------------------------------------------------
  */
-// Add reference BEFORE signing
-$billingCopyId = $response['id'];
-
-$payfastFields = [
-    'merchant_id' => $env['payfast']['merchant_id'],
-    'merchant_key' => $env['payfast']['merchant_key'],
-    'amount' => number_format((float) $_POST['amount'], 2, '.', ''),
-    'item_name' => $_POST['item_name'],
-    'currency' => $env['service']['currency'],
-    'return_url' => $env['service']['return_url'],
-    'cancel_url' => $env['service']['cancel_url'],
-    'notify_url' => $env['service']['notify_url'],
-    'm_payment_id' => $billingCopyId,
-
-    // 👇 This is the important one
-    'email_address' => $_POST['billing_email']
-];
-
-// Generate signature LAST
-$payfastFields['signature'] = generateApiSignature(
-    $payfastFields,
-    $env['payfast']['passphrase'] ?? ''
-);
-
-$paymentUrl =
-    ($env['payfast']['mode'] === 'sandbox')
-    ? 'https://sandbox.payfast.co.za/eng/process'
-    : 'https://www.payfast.co.za/eng/process';
-
 echo json_encode([
     'ok' => true,
-    'payment_url' => $paymentUrl,
-    'fields' => $payfastFields
+    'order_id' => $response['id']
 ]);
-
-
