@@ -8,12 +8,25 @@ header('Content-Type: application/json; charset=utf-8');
 require __DIR__ . '/CurlClient.php';
 require __DIR__ . '/helpers.php';
 
+$input = json_decode(file_get_contents('php://input'), true);
+
+if (!is_array($input)) {
+    http_response_code(400);
+    echo json_encode([
+        'ok' => false,
+        'error' => 'Invalid JSON body'
+    ]);
+    exit;
+}
+
+
 /**
  * -------------------------------------------------
  * 1. Accept required inputs
  * -------------------------------------------------
  */
-$productId = $_POST['product_id'] ?? $_GET['product_id'] ?? null;
+$productId = $input['product_id'] ?? null;
+
 
 if (!$productId) {
     http_response_code(400);
@@ -25,10 +38,12 @@ if (!$productId) {
 }
 
 // Optional payload extras (e.g. m_payment_id)
-$extras = $_POST['payload_extras'] ?? $_GET['payload_extras'] ?? [];
-if (!is_array($extras)) {
-    $extras = [];
+$extras = [];
+
+if (isset($input['payload_extras']) && is_array($input['payload_extras'])) {
+    $extras = $input['payload_extras'];
 }
+
 
 /**
  * -------------------------------------------------
