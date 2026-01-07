@@ -200,7 +200,7 @@ foreach ($extras as $key => $value) {
  * 7. Generate signature (LAST)
  * -------------------------------------------------
  */
-$payfastFields['signature'] = generateApiSignature(
+$payfastFields['signature'] = generateSignature(
     $payfastFields,
     $env['payfast']['passphrase'] ?? ''
 );
