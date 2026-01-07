@@ -30,6 +30,35 @@ require __DIR__ . '/helpers.php';
  */
 $pfData = $_POST;
 
+
+/**
+ * -------------------------------------------------
+ * 1.1 Log incoming ITN (raw + meta)
+ * -------------------------------------------------
+ */
+$logDir = __DIR__ . '/logs';
+$logFile = $logDir . '/payfast-itn.log';
+
+if (!is_dir($logDir)) {
+    mkdir($logDir, 0755, true);
+}
+
+$logEntry = [
+    'timestamp' => date('c'),
+    'ip'        => $_SERVER['REMOTE_ADDR'] ?? null,
+    'method'    => $_SERVER['REQUEST_METHOD'] ?? null,
+    'headers'   => function_exists('getallheaders') ? getallheaders() : [],
+    'post'      => $pfData
+];
+
+file_put_contents(
+    $logFile,
+    json_encode($logEntry, JSON_PRETTY_PRINT) . "\n\n",
+    FILE_APPEND | LOCK_EX
+);
+
+
+
 if (empty($pfData) || !is_array($pfData)) {
     exit('No POST data');
 }
