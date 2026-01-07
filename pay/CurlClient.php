@@ -139,6 +139,60 @@ class CurlClient
         return $info;
     }
 
+    /**
+     * Make a PATCH request
+     *
+     * @param string   $url
+     * @param array    $headers
+     * @param string   $body      (already JSON-encoded)
+     * @param resource $file      (stream to write response into)
+     *
+     * @return bool|array
+     */
+    public function patch($url, $headers = array(), $body = '', $file = null)
+    {
+        $this->report(sprintf('PATCH %s', $url));
+
+        // Always write to a real temp file
+        $tempPath = tempnam(sys_get_temp_dir(), 'curl_');
+        $tempHandle = fopen($tempPath, 'w+');
+
+        curl_setopt_array($this->curl, array(
+            CURLOPT_URL => $url,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_CUSTOMREQUEST => 'PATCH',
+            CURLOPT_POSTFIELDS => $body,
+            CURLOPT_FILE => $tempHandle,
+        ));
+
+        $this->headers = array();
+        $result = curl_exec($this->curl);
+
+        if ($result === false) {
+            $err = curl_error($this->curl);
+            echo "<pre style='color:red'>❌ CURL PATCH failed: $err</pre>";
+            fclose($tempHandle);
+            unlink($tempPath);
+            return false;
+        }
+
+        $info = curl_getinfo($this->curl);
+        unset($info['local_ip'], $info['local_port']);
+        $info['headers'] = $this->headers;
+
+        fclose($tempHandle);
+
+        // Copy response into caller-provided stream
+        if ($file) {
+            $tempData = file_get_contents($tempPath);
+            fwrite($file, $tempData);
+        }
+
+        unlink($tempPath);
+        return $info;
+    }
+
+
 
     /**
      * Store response headers in an array

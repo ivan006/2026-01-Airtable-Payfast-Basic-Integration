@@ -3,20 +3,44 @@
 ini_set('display_errors', true);
 error_reporting(E_ALL);
 
-// PayFast sends form-encoded POST
-$pfData = $_POST;
+/**
+ * -------------------------------------------------
+ * PayFast ITN endpoint
+ * -------------------------------------------------
+ * This implementation follows PayFast docs LITERALLY:
+ * - Uses posted order
+ * - Uses urlencode()
+ * - Includes empty fields
+ * - Stops at signature
+ * - Appends passphrase AFTER param string
+ * -------------------------------------------------
+ */
+
+// PayFast expects HTTP 200 immediately
+header('HTTP/1.0 200 OK');
+flush();
 
 require __DIR__ . '/CurlClient.php';
 require __DIR__ . '/helpers.php';
 
 /**
  * -------------------------------------------------
- * 1. Load env.json
+ * 1. Capture POST payload
+ * -------------------------------------------------
+ */
+$pfData = $_POST;
+
+if (empty($pfData) || !is_array($pfData)) {
+    exit('No POST data');
+}
+
+/**
+ * -------------------------------------------------
+ * 2. Load env.json
  * -------------------------------------------------
  */
 $envFile = __DIR__ . '/env.json';
 if (!file_exists($envFile)) {
-    http_response_code(500);
     exit('env.json missing');
 }
 
@@ -24,72 +48,85 @@ $env = json_decode(file_get_contents($envFile), true);
 
 /**
  * -------------------------------------------------
- * 2. Verify PayFast signature
+ * 3. Build param string EXACTLY as per PayFast docs
  * -------------------------------------------------
  */
-$pfSignature = $pfData['signature'] ?? '';
-unset($pfData['signature']);
+$pfParamString = '';
 
+foreach ($pfData as $key => $val) {
+    if ($key !== 'signature') {
+        // IMPORTANT:
+        // - urlencode (not rawurlencode)
+        // - do NOT trim unless PayFast trimmed
+        $pfParamString .= $key . '=' . urlencode($val) . '&';
+    } else {
+        break;
+    }
+}
 
+// Remove trailing &
+$pfParamString = substr($pfParamString, 0, -1);
 
-
-
-
-
-$calculated = pfValidSignature(
+/**
+ * -------------------------------------------------
+ * 4. Verify signature (DOC FUNCTION)
+ * -------------------------------------------------
+ */
+if (!pfValidSignature(
     $pfData,
-    $env['payfast']['passphrase'] ?? ''
-);
-
-if ($pfSignature !== $calculated) {
+    $pfParamString,
+    $env['payfast']['passphrase'] ?? null
+)) {
     http_response_code(400);
     exit('Invalid signature');
 }
 
 /**
  * -------------------------------------------------
- * 3. Validate required PayFast fields
+ * 5. Basic merchant validation
  * -------------------------------------------------
  */
-$required = [
-    'm_payment_id',
-    'payment_status',
-    'amount_gross',
-    'merchant_id'
-];
-
-foreach ($required as $key) {
-    if (empty($pfData[$key])) {
-        http_response_code(400);
-        exit("Missing $key");
-    }
-}
-
-// Merchant safety check
-if ($pfData['merchant_id'] !== $env['payfast']['merchant_id']) {
+if (
+    empty($pfData['merchant_id']) ||
+    $pfData['merchant_id'] !== $env['payfast']['merchant_id']
+) {
     http_response_code(403);
     exit('Invalid merchant');
 }
 
-$orderId = $pfData['m_payment_id'];
-$status = $pfData['payment_status'];
+/**
+ * -------------------------------------------------
+ * 6. Optional: payment amount validation
+ * (Recommended later)
+ * -------------------------------------------------
+ */
+// Example (disabled for now):
+// if (!pfValidPaymentData($expectedAmount, $pfData)) {
+//     exit('Amount mismatch');
+// }
 
 /**
  * -------------------------------------------------
- * 4. Map PayFast status → Airtable status
+ * 7. Map PayFast status → Airtable status
  * -------------------------------------------------
  */
 $statusMap = [
-    'COMPLETE' => 'Paid',
-    'FAILED' => 'Failed',
+    'COMPLETE'  => 'Paid',
+    'FAILED'    => 'Failed',
     'CANCELLED' => 'Cancelled'
 ];
 
-$airtableStatus = $statusMap[$status] ?? 'Unknown';
+$paymentStatus = $pfData['payment_status'] ?? 'UNKNOWN';
+$airtableStatus = $statusMap[$paymentStatus] ?? 'Unknown';
+
+$orderId = $pfData['m_payment_id'] ?? null;
+if (!$orderId) {
+    exit('Missing m_payment_id');
+}
 
 /**
  * -------------------------------------------------
- * 5. Update order record in Airtable
+ * 8. Update Airtable order record
  * -------------------------------------------------
  */
 $airtableUrl =
@@ -118,17 +155,17 @@ $payload = json_encode([
 
 $client = new CurlClient(false);
 $bodyStream = fopen('php://temp', 'w+');
+
 $info = $client->patch($airtableUrl, $headers, $payload, $bodyStream);
 
-if (!$info || !in_array($info['http_code'], [200], true)) {
+if (!$info || $info['http_code'] !== 200) {
     http_response_code(502);
-    exit('Failed to update order');
+    exit('Failed to update Airtable');
 }
 
 /**
  * -------------------------------------------------
- * 6. Acknowledge ITN
+ * 9. Done
  * -------------------------------------------------
  */
-http_response_code(200);
 echo 'OK';
