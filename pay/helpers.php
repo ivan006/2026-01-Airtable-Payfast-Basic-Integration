@@ -24,7 +24,7 @@ function generateSignature($data, $passPhrase = null)
   // Docs are not good we must add the passphrase here rather
   $data['passphrase'] = $passPhrase;
 
-  // ksort($data);
+  ksort($data);
   foreach ($data as $key => $val) {
     if ($val !== '') {
       $pfOutput .= $key . '=' . urlencode(trim($val)) . '&';
