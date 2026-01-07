@@ -189,6 +189,11 @@ foreach ($extras as $key => $value) {
     $payfastFields[$key] = $value;
 }
 
+// 🔒 Normalize payload BEFORE signing
+// $payfastFields = array_filter(
+//     $payfastFields,
+//     fn ($v) => $v !== '' && $v !== null
+// );
 
 /**
  * -------------------------------------------------
