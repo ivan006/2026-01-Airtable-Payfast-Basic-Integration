@@ -72,7 +72,7 @@ if ($pfData['merchant_id'] !== $env['payfast']['merchant_id']) {
 }
 
 $orderId = $pfData['m_payment_id'];
-$status  = $pfData['payment_status'];
+$status = $pfData['payment_status'];
 
 /**
  * -------------------------------------------------
@@ -81,8 +81,8 @@ $status  = $pfData['payment_status'];
  */
 $statusMap = [
     'COMPLETE' => 'Paid',
-    'FAILED'   => 'Failed',
-    'CANCELLED'=> 'Cancelled'
+    'FAILED' => 'Failed',
+    'CANCELLED' => 'Cancelled'
 ];
 
 $airtableStatus = $statusMap[$status] ?? 'Unknown';
