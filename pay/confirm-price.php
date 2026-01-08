@@ -119,6 +119,21 @@ if (
  * -------------------------------------------------
  */
 $price = (float) $data['fields'][$env['airtable']['price_field']];
+$paymentStatuses = $data['fields'][$env['airtable']['payment_statuses_field']] ?? [];
+
+// 🔒 If any status contains "Paid", block purchase
+foreach ($paymentStatuses as $status) {
+    if (stripos($status, 'Paid') !== false) {
+        http_response_code(409);
+        echo json_encode([
+            'ok'   => false,
+            'code' => 'PRODUCT_SOLD',
+            'error'=> 'This product has already been sold.'
+        ]);
+        exit;
+    }
+}
+
 
 $productNameRaw = $data['fields'][$env['airtable']['name_field']] ?? 'Product';
 $productName = is_array($productNameRaw)
