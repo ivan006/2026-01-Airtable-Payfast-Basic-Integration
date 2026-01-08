@@ -28,15 +28,35 @@ $required = [
     'addr_city',
     'addr_region',
     'addr_postcode',
-    'addr_country'
+    'addr_country',
+    'product_id'
 ];
 
 
 foreach ($required as $key) {
-    if (
-        !array_key_exists($key, $input) ||
-        trim((string)$input[$key]) === ''
-    ) {
+    if (!array_key_exists($key, $input)) {
+        http_response_code(400);
+        echo json_encode([
+            'ok' => false,
+            'error' => "$key is required"
+        ]);
+        exit;
+    }
+
+    $value = $input[$key];
+
+    // If array: must not be empty
+    if (is_array($value) && empty($value)) {
+        http_response_code(400);
+        echo json_encode([
+            'ok' => false,
+            'error' => "$key is required"
+        ]);
+        exit;
+    }
+
+    // If scalar: must not be empty string
+    if (!is_array($value) && trim((string) $value) === '') {
         http_response_code(400);
         echo json_encode([
             'ok' => false,
@@ -45,6 +65,7 @@ foreach ($required as $key) {
         exit;
     }
 }
+
 /**
  * -------------------------------------------------
  * 2. Load env.json
