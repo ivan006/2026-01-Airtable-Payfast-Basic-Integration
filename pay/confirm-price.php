@@ -126,9 +126,9 @@ foreach ($paymentStatuses as $status) {
     if (stripos($status, 'Paid') !== false) {
         http_response_code(409);
         echo json_encode([
-            'ok'   => false,
+            'ok' => false,
             'code' => 'PRODUCT_SOLD',
-            'error'=> 'This product has already been sold.'
+            'error' => 'This product has already been sold.'
         ]);
         exit;
     }
@@ -215,11 +215,14 @@ foreach ($extras as $key => $value) {
  * 7. Generate signature (LAST)
  * -------------------------------------------------
  */
-$payfastFields['signature'] = generateSignature(
-    $payfastFields,
-    $env['payfast']['passphrase'] ?? ''
-);
+if (($env['payfast']['mode'] !== 'sandbox')) {
 
+    $payfastFields['signature'] = generateSignature(
+        $payfastFields,
+        $env['payfast']['passphrase'] ?? ''
+    );
+
+}
 /**
  * -------------------------------------------------
  * 8. Resolve PayFast endpoint
